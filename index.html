@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Keuangan - Nara Pustaka</title>
+    <!-- Menggunakan Bootstrap 5 untuk Tampilan UI -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Load Pustaka Pembuat PDF Langsung di Sisi Klien (Bypass Blokir Browser) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    
+    <style>
+        body { 
+            background-color: #f4f6f9; 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            -webkit-tap-highlight-color: transparent;
+        }
+        .card { 
+            border: none; 
+            box-shadow: 0 4px 10px rgba(0,0,0,0.04); 
+            border-radius: 16px; 
+        }
+        .table-responsive { 
+            background: white; 
+            padding: 15px; 
+            border-radius: 16px; 
+            box-shadow: 0 2px 8px rgba(0,0,0,0.03); 
+        }
+        
+        .loading-overlay { 
+            display: none; 
+            background: rgba(255,255,255,0.9); 
+            position: fixed; 
+            top:0; 
+            left:0; 
+            width:100%; 
+            height:100%; 
+            justify-content: center; 
+            align-items: center; 
+            z-index: 9999; 
+            flex-direction: column; 
+        }
+        
+        #loginScreen { 
+            min-height: 100vh; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            padding: 20px;
+        }
+        #loginCard {
+            width: 100%;
+            max-width: 420px;
+            border-radius: 20px;
+            padding: 30px 20px !important;
+        }
+        #mainApp { 
+            display: none; 
+        }
+
+        .form-control, .form-select, .btn {
+            min-height: 46px; 
+            border-radius: 10px;
+        }
+        .btn-sm {
+            min-height: auto;
+            padding: 8px 14px;
+        }
+
+        .summary-box {
+            padding: 12px;
+            border-radius: 12px;
+            border: 1px solid #e9ecef;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        .summary-title {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+        .summary-value {
+            font-size: 1rem;
+            word-break: break-word;
+        }
+
+        @media (max-width: 576px) {
+            h1 { font-size: 1.8rem; }
+            .summary-value { font-size: 0.95rem; }
+            .table-responsive { padding: 10px; }
+            .table th, .table td { font-size: 0.85rem; padding: 10px 8px; }
+        }
+
+        body.printing-pdf {
+            background-color: #ffffff !important;
+            padding: 0 !important;
+            margin: 0 !important;
+        }
+        body.printing-pdf .no-print { 
+            display: none !important; 
+        }
+        body.printing-pdf .card { 
+            box-shadow: none !important; 
+            border: 1px solid #dee2e6 !important; 
+        }
+        body.printing-pdf .summary-box {
+            border: 1px solid #dee2e6 !important;
+        }
+    </style>
+</head>
+<body>
+
+<!-- === OVERLAY LOADING === -->
+<div id="loading" class="loading-overlay">
+    <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;" role="status"></div>
+    <h5 id="loadingTitle" class="mt-3 fw-bold text-primary">Sinkronisasi Data...</h5>
+    <p id="loadingDesc" class="text-muted text-center px-4">Mengirim & menyinkronkan data dengan Google Sheets</p>
+</div>
+
+<!-- === LAYAR LOGIN === -->
+<div id="loginScreen">
+    <div id="loginCard" class="card p-4 text-center shadow-lg">
+        <h2 class="fw-bold text-primary mb-1">NARA PUSTAKA</h2>
+        <p class="text-muted mb-4">Portal Keuangan Internal</p>
+        
+        <form id="loginForm">
+            <div class="mb-3 text-start">
+                <label class="form-label fw-bold small text-secondary">Kata Sandi</label>
+                <input type="password" id="passwordInput" class="form-control form-control-lg text-center" placeholder="Masukkan password..." required autocomplete="current-password">
+                <div id="loginError" class="text-danger mt-2 small text-center" style="display: none;">Password salah! Silakan coba lagi.</div>
+            </div>
+            <button type="submit" class="btn btn-primary btn-lg w-100 fw-bold shadow-sm">Masuk Sistem</button>
+        </form>
+    </div>
+</div>
+
+<!-- === APLIKASI UTAMA === -->
+<div id="mainApp" class="container my-3 my-md-5 px-3 px-sm-4">
+    <!-- Header -->
+    <div class="text-center mb-4 mb-md-5">
+        <h1 class="fw-bold text-primary">NARA PUSTAKA</h1>
+        <p class="text-muted small">Sistem Pencatatan Keuangan & Laporan Pajak Terintegrasi Google Sheets</p>
+        <hr>
+    </div>
+
+    <!-- Form & Summary -->
+    <div class="row g-4 mb-4">
+        <!-- Form Input -->
+        <div class="col-lg-4 no-print">
+            <div class="card p-4">
+                <h5 class="mb-4 fw-bold text-secondary">Tambah Transaksi</h5>
+                <form id="financeForm">
+                    <div class="mb-3">
+                        <label class="form-label text-muted small fw-bold">Tanggal</label>
+                        <input type="date" id="txDate" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label text-muted small fw-bold">Keterangan</label>
+                        <input type="text" id="txDesc" class="form-control" placeholder="Cth: Penjualan Buku A" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label text-muted small fw-bold">Jenis Transaksi</label>
+                        <select id="txType" class="form-select">
+                            <option value="income">Pemasukan (Omzet)</option>
+                            <option value="expense">Pengeluaran</option>
+                        </select>
+                    </div>
+                    <div class="mb-4">
+                        <label class="form-label text-muted small fw-bold">Jumlah (Rp)</label>
+                        <input type="number" id="txAmount" class="form-control" placeholder="0" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100 fw-bold shadow-sm">Simpan ke Spreadsheet</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Ringkasan Laporan -->
+        <div class="col-lg-8">
+            <div class="card p-4 h-100">
+                <div class="d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center gap-3 mb-4">
+                    <h5 class="fw-bold text-secondary m-0">Ringkasan Laporan</h5>
+                    <div class="d-flex flex-wrap gap-2 w-100 w-sm-auto">
+                        <button onclick="fetchData()" class="btn btn-outline-primary btn-sm no-print flex-grow-1 flex-sm-grow-0">🔄 Refresh</button>
+                        <button onclick="exportToPDF()" class="btn btn-success btn-sm no-print flex-grow-1 flex-sm-grow-0">🖨️ Cetak PDF</button>
+                        <button onclick="logout()" class="btn btn-outline-danger btn-sm no-print flex-grow-1 flex-sm-grow-0">Keluar</button>
+                    </div>
+                </div>
+                
+                <!-- Grid Ringkasan -->
+                <div class="row text-center g-3">
+                    <div class="col-6 col-md-3">
+                        <div class="summary-box bg-light">
+                            <span class="summary-title text-muted">Pemasukan</span>
+                            <span id="totalIncome" class="fw-bold text-success summary-value">Rp 0</span>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <div class="summary-box bg-light">
+                            <span class="summary-title text-muted">Pengeluaran</span>
+                            <span id="totalExpense" class="fw-bold text-danger summary-value">Rp 0</span>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <div class="summary-box bg-light">
+                            <span class="summary-title text-muted">Laba Bersih</span>
+                            <span id="netProfit" class="fw-bold text-dark summary-value">Rp 0</span>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <div class="summary-box bg-warning-subtle border border-warning-subtle">
+                            <span class="summary-title text-warning-emphasis fw-bold">Pajak (0.5%)</span>
+                            <span id="taxAmount" class="fw-bold text-danger summary-value">Rp 0</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mt-4 p-3 bg-light rounded-3 border text-muted small">
+                    <strong>Catatan:</strong> 
+                    <ul class="mb-0 mt-1 ps-3">
+                        <li>Data tersimpan di Google Spreadsheet Anda secara real-time.</li>
+                        <li>Estimasi pajak menggunakan tarif <strong>PPh Final UMKM 0.5%</strong> dari total Pemasukan Kotor (Omzet).</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabel Data Responsif -->
+    <div class="table-responsive mt-2">
+        <h5 class="fw-bold text-secondary mb-3">Detail Riwayat Transaksi</h5>
+        <table class="table table-hover align-middle">
+            <thead class="table-dark">
+                <tr>
+                    <th style="width: 20%;">Tanggal</th>
+                    <th style="width: 40%;">Keterangan</th>
+                    <th style="width: 15%;">Jenis</th>
+                    <th style="width: 15%;" class="text-end">Jumlah</th>
+                    <th style="width: 10%;" class="text-center no-print">Aksi</th>
+                </tr>
+            </thead>
+            <tbody id="transactionTable">
+                <tr><td colspan="5" class="text-center text-muted py-4">Memuat data dari Google Sheets...</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    // --- KONFIGURASI ---
+    const APP_PASSWORD = "narapustaka";
+    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwudvegLS5I2UxZWNQvbYcbxpjF7SdhxAK_A99rHz6PO2h5QmAlEiuA1SSOEBzVCDL_Nw/exec";
+
+    // --- VARIABEL GLOBAL ---
+    let transactions = [];
+    const loginForm = document.getElementById('loginForm');
+    const mainForm = document.getElementById('financeForm');
+    const tableBody = document.getElementById('transactionTable');
+    const loading = document.getElementById('loading');
+    const loadingTitle = document.getElementById('loadingTitle');
+    const loadingDesc = document.getElementById('loadingDesc');
+
+    // Set tanggal hari ini sebagai default di form
+    document.getElementById('txDate').valueAsDate = new Date();
+
+    // --- FUNGSI LOGIN ---
+    loginForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        const pwd = document.getElementById('passwordInput').value;
+        
+        if(pwd === APP_PASSWORD) {
+            document.getElementById('loginError').style.display = 'none';
+            document.getElementById('loginScreen').style.display = 'none';
+            document.getElementById('mainApp').style.display = 'block';
+            fetchData(); 
+        } else {
+            document.getElementById('loginError').style.display = 'block';
+        }
+    });
+
+    function logout() {
+        if(confirm("Apakah Anda yakin ingin keluar?")) {
+            document.getElementById('mainApp').style.display = 'none';
+            document.getElementById('loginScreen').style.display = 'flex';
+            document.getElementById('passwordInput').value = '';
+            transactions = []; 
+        }
+    }
+
+    // --- FUNGSI LOADING ---
+    function showLoading(show, title = "Sinkronisasi Data...", desc = "Mengirim & menyinkronkan data dengan Google Sheets") {
+        loadingTitle.innerText = title;
+        loadingDesc.innerText = desc;
+        loading.style.display = show ? 'flex' : 'none';
+    }
+
+    // --- FUNGSI AMBIL DATA DARI SPREADSHEET ---
+    function fetchData() {
+        showLoading(true, "Sinkronisasi Data...", "Mengambil data keuangan terbaru dari Google Sheets...");
+        fetch(WEB_APP_URL)
+            .then(res => res.json())
+            .then(data => {
+                transactions = data;
+                updateUI();
+                showLoading(false);
+            })
+            .catch(err => {
+                console.error(err);
+                alert("Gagal mengambil data. Pastikan koneksi internet stabil.");
+                showLoading(false);
+            });
+    }
+
+    // --- FUNGSI TAMBAH DATA ---
+    mainForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        showLoading(true, "Menyimpan Transaksi...", "Mengirim dan mencatat transaksi ke Google Sheets...");
+        
+        const payload = {
+            action: 'add',
+            id: Date.now(),
+            date: document.getElementById('txDate').value,
+            desc: document.getElementById('txDesc').value,
+            type: document.getElementById('txType').value,
+            amount: parseFloat(document.getElementById('txAmount').value)
+        };
+
+        fetch(WEB_APP_URL, {
+            method: 'POST',
+            body: JSON.stringify(payload),
+            redirect: 'follow'
+        })
+        .then(res => res.json())
+        .then(result => {
+            mainForm.reset();
+            document.getElementById('txDate').valueAsDate = new Date(); 
+            fetchData(); 
+        })
+        .catch(err => {
+            alert("Gagal menyimpan data ke Spreadsheet.");
+            showLoading(false);
+        });
+    });
+
+    // --- FUNGSI HAPUS DATA ---
+    function deleteTransaction(id) {
+        if(!confirm("Apakah Anda yakin ingin menghapus data ini dari Spreadsheet?")) return;
+        showLoading(true, "Menghapus Transaksi...", "Menghapus baris transaksi dari Google Sheets...");
+
+        fetch(WEB_APP_URL, {
+            method: 'POST',
+            body: JSON.stringify({ action: 'delete', id: id }),
+            redirect: 'follow'
+        })
+        .then(res => res.json())
+        .then(result => {
+            fetchData(); 
+        })
+        .catch(err => {
+            alert("Gagal menghapus data.");
+            showLoading(false);
+        });
+    }
+
+    // --- FUNGSI GENERATE PDF PREMIUM ---
+    function exportToPDF() {
+        showLoading(true, "Membuat PDF...", "Mengonversi halaman web ke dokumen PDF... Mohon tunggu.");
+        
+        // Tambahkan kelas cetak ke body untuk menyembunyikan input form saat export
+        document.body.classList.add('printing-pdf');
+        
+        const element = document.getElementById('mainApp');
+        
+        // Konfigurasi Kertas A4 & Rasio Kompresi Tinggi
+        const options = {
+            margin:       [10, 10, 10, 10], // Margins (top, left, bottom, right) dalam mm
+            filename:     'Laporan_Keuangan_Nara_Pustaka.pdf',
+            image:        { type: 'jpeg', quality: 0.98 },
+            html2canvas:  { scale: 2, useCORS: true, logging: false },
+            jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        };
+
+        // Jalankan ekspor file PDF di client-side
+        html2pdf().set(options).from(element).save().then(() => {
+            document.body.classList.remove('printing-pdf');
+            showLoading(false);
+        }).catch(err => {
+            console.error("Gagal cetak otomatis via html2pdf, mengalihkan ke printer browser:", err);
+            document.body.classList.remove('printing-pdf');
+            showLoading(false);
+            
+            // Fallback cadangan jika pustaka diblokir oleh HP versi sangat lama
+            window.print();
+        });
+    }
+
+    // --- FUNGSI FORMAT RUPIAH ---
+    function formatRupiah(number) {
+        return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(number);
+    }
+
+    // --- FUNGSI UPDATE TAMPILAN TABEL & PERHITUNGAN ---
+    function updateUI() {
+        tableBody.innerHTML = '';
+        
+        if(transactions.length === 0) {
+            tableBody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">Belum ada data transaksi. Mulai tambahkan data baru.</td></tr>';
+        }
+        
+        let totalIncome = 0;
+        let totalExpense = 0;
+
+        // Urutkan transaksi dari yang terbaru ke terlama
+        transactions.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+        transactions.forEach(t => {
+            const amount = parseFloat(t.amount) || 0;
+            if(t.type === 'income') totalIncome += amount;
+            else totalExpense += amount;
+
+            // Format tanggal (DD/MM/YYYY)
+            let dateObj = new Date(t.date);
+            let formattedDate = ("0" + dateObj.getDate()).slice(-2) + "/" + ("0" + (dateObj.getMonth() + 1)).slice(-2) + "/" + dateObj.getFullYear();
+
+            const row = `
+                <tr>
+                    <td class="fw-medium">${formattedDate}</td>
+                    <td>${t.desc}</td>
+                    <td><span class="badge rounded-pill ${t.type === 'income' ? 'bg-success' : 'bg-danger'}">${t.type === 'income' ? 'Masuk' : 'Keluar'}</span></td>
+                    <td class="text-end fw-bold ${t.type === 'income' ? 'text-success' : 'text-danger'}">${formatRupiah(amount)}</td>
+                    <td class="text-center no-print">
+                        <button onclick="deleteTransaction(${t.id})" class="btn btn-sm btn-outline-danger shadow-sm">Hapus</button>
+                    </td>
+                </tr>
+            `;
+            tableBody.insertAdjacentHTML('beforeend', row);
+        });
+
+        const netProfit = totalIncome - totalExpense;
+        const tax = totalIncome * 0.005; 
+
+        // Update angka di Ringkasan Laporan
+        document.getElementById('totalIncome').innerText = formatRupiah(totalIncome);
+        document.getElementById('totalExpense').innerText = formatRupiah(totalExpense);
+        document.getElementById('taxAmount').innerText = formatRupiah(tax);
+        
+        // Atur warna Laba Bersih
+        const netProfitEl = document.getElementById('netProfit');
+        netProfitEl.innerText = formatRupiah(netProfit);
+        if(netProfit < 0) {
+            netProfitEl.className = "fw-bold text-danger summary-value";
+        } else {
+            netProfitEl.className = "fw-bold text-dark summary-value";
+        }
+    }
+</script>
+</body>
+</html>
