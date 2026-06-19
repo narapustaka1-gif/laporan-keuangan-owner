@@ -29,6 +29,7 @@
             box-shadow: 0 2px 8px rgba(0,0,0,0.03); 
         }
         
+        /* Loading Overlay */
         .loading-overlay { 
             display: none; 
             background: rgba(255,255,255,0.9); 
@@ -43,6 +44,7 @@
             flex-direction: column; 
         }
         
+        /* Layar Login */
         #loginScreen { 
             min-height: 100vh; 
             display: flex; 
@@ -60,6 +62,7 @@
             display: none; 
         }
 
+        /* Ukuran Input Adaptif HP */
         .form-control, .form-select, .btn {
             min-height: 46px; 
             border-radius: 10px;
@@ -69,6 +72,7 @@
             padding: 8px 14px;
         }
 
+        /* Tampilan Kartu Informasi Ringkasan */
         .summary-box {
             padding: 12px;
             border-radius: 12px;
@@ -116,10 +120,39 @@
         .pdf-summary-row { display: flex; justify-content: space-between; margin-bottom: 8px; }
         .pdf-summary-row.bold { font-weight: bold; border-top: 1px solid black; padding-top: 8px; margin-top: 8px; }
         
-        /* Pengaturan Khusus untuk Cetak PDF bawaan (fallback) */
+        /* Pengaturan Cetak Bawaan Sistem */
         @media print {
+            .no-print { display: none !important; }
+            body { background: white; color: black; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- === OVERLAY LOADING === -->
+<div id="loading" class="loading-overlay">
+    <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;" role="status"></div>
     <h5 id="loadingTitle" class="mt-3 fw-bold text-primary">Sinkronisasi Data...</h5>
     <p id="loadingDesc" class="text-muted text-center px-4">Mengirim & menyinkronkan data dengan Google Sheets</p>
+</div>
+
+<!-- === DIALOG BOX KONFIRMASI KUSTOM (Pengganti confirm() Browser) === -->
+<div id="customDialog" class="position-fixed top-0 start-0 w-100 h-100 justify-content-center align-items-center" style="display: none; background: rgba(0,0,0,0.5); z-index: 10000; padding: 20px;">
+    <div class="card p-4 mx-auto w-100 shadow-lg" style="max-width: 400px; border-radius: 16px; background: white;">
+        <h5 class="fw-bold mb-2 text-dark" id="dialogTitle">Konfirmasi</h5>
+        <p class="text-muted small mb-4" id="dialogText">Apakah Anda yakin ingin melakukan tindakan ini?</p>
+        <div class="d-flex justify-content-end gap-2">
+            <button type="button" id="dialogCancelBtn" class="btn btn-light px-4" style="min-height: auto;">Batal</button>
+            <button type="button" id="dialogConfirmBtn" class="btn btn-danger px-4" style="min-height: auto;">Ya, Lanjutkan</button>
+        </div>
+    </div>
+</div>
+
+<!-- === FLOATING TOAST NOTIFIKASI KUSTOM (Pengganti alert() Browser) === -->
+<div class="position-fixed bottom-0 start-50 translate-middle-x p-3" style="z-index: 10050; width: 100%; max-width: 400px;">
+    <div id="customToast" class="card p-3 text-white text-center shadow-lg border-0" style="display: none; border-radius: 12px; background: #333; transition: all 0.3s ease;">
+        <span id="toastMessage" class="fw-semibold">Notifikasi</span>
+    </div>
 </div>
 
 <!-- === LAYAR LOGIN === -->
@@ -334,12 +367,13 @@
     });
 
     function logout() {
-        if(confirm("Apakah Anda yakin ingin keluar?")) {
+        showConfirm("Keluar Sistem", "Apakah Anda yakin ingin keluar?", function() {
             document.getElementById('mainApp').style.display = 'none';
             document.getElementById('loginScreen').style.display = 'flex';
             document.getElementById('passwordInput').value = '';
             transactions = []; 
-        }
+            showToast("Berhasil keluar.");
+        });
     }
 
     // --- FUNGSI LOADING ---
@@ -361,7 +395,7 @@
             })
             .catch(err => {
                 console.error(err);
-                alert("Gagal mengambil data. Pastikan koneksi internet stabil.");
+                showToast("Gagal mengambil data. Pastikan koneksi internet stabil.", "error");
                 showLoading(false);
             });
     }
@@ -390,30 +424,78 @@
             mainForm.reset();
             document.getElementById('txDate').valueAsDate = new Date(); 
             fetchData(); 
+            showToast("Transaksi berhasil disimpan!");
         })
         .catch(err => {
-            alert("Gagal menyimpan data ke Spreadsheet.");
+            showToast("Gagal menyimpan data ke Spreadsheet.", "error");
             showLoading(false);
         });
     });
 
     // --- FUNGSI HAPUS DATA ---
     function deleteTransaction(id) {
-        if(!confirm("Apakah Anda yakin ingin menghapus data ini dari Spreadsheet?")) return;
-        showLoading(true, "Menghapus Transaksi...", "Menghapus baris transaksi dari Google Sheets...");
+        showConfirm("Hapus Transaksi", "Apakah Anda yakin ingin menghapus data ini dari Spreadsheet?", function() {
+            showLoading(true, "Menghapus Transaksi...", "Menghapus baris transaksi dari Google Sheets...");
 
-        fetch(WEB_APP_URL, {
-            method: 'POST',
-            body: JSON.stringify({ action: 'delete', id: id }),
-            redirect: 'follow'
-        })
-        .then(res => res.json())
-        .then(result => {
-            fetchData(); 
-        })
-        .catch(err => {
-            alert("Gagal menghapus data.");
-            showLoading(false);
+            fetch(WEB_APP_URL, {
+                method: 'POST',
+                body: JSON.stringify({ action: 'delete', id: id }),
+                redirect: 'follow'
+            })
+            .then(res => res.json())
+            .then(result => {
+                fetchData(); 
+                showToast("Transaksi berhasil dihapus.");
+            })
+            .catch(err => {
+                showToast("Gagal menghapus data.", "error");
+                showLoading(false);
+            });
+        });
+    }
+
+    // --- SISTEM POPUP DIALOG & TOAST KUSTOM ---
+    function showToast(message, type = "success") {
+        const toast = document.getElementById('customToast');
+        const text = document.getElementById('toastMessage');
+        text.innerText = message;
+        
+        if (type === "success") {
+            toast.style.background = "#198754"; // Hijau Bootstrap
+        } else {
+            toast.style.background = "#dc3545"; // Merah Bootstrap
+        }
+        
+        toast.style.display = "block";
+        setTimeout(() => {
+            toast.style.display = "none";
+        }, 3000);
+    }
+
+    function showConfirm(title, text, confirmCallback) {
+        const dialog = document.getElementById('customDialog');
+        document.getElementById('dialogTitle').innerText = title;
+        document.getElementById('dialogText').innerText = text;
+        
+        dialog.style.display = "flex";
+        
+        const confirmBtn = document.getElementById('dialogConfirmBtn');
+        const cancelBtn = document.getElementById('dialogCancelBtn');
+        
+        // Bersihkan event listener sebelumnya
+        const newConfirmBtn = confirmBtn.cloneNode(true);
+        confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+        
+        const newCancelBtn = cancelBtn.cloneNode(true);
+        cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
+
+        newConfirmBtn.addEventListener('click', function() {
+            dialog.style.display = "none";
+            confirmCallback();
+        });
+        
+        newCancelBtn.addEventListener('click', function() {
+            dialog.style.display = "none";
         });
     }
 
@@ -468,18 +550,19 @@
         html2pdf().set(options).from(printElement).save().then(() => {
             printElement.style.display = 'none'; // Sembunyikan kembali
             showLoading(false);
+            showToast("PDF Berhasil diunduh!");
         }).catch(err => {
             console.error("Gagal cetak otomatis", err);
             printElement.style.display = 'none';
             showLoading(false);
-            alert("Terjadi kesalahan saat membuat PDF.");
+            showToast("Terjadi kesalahan saat membuat PDF.", "error");
         });
     }
 
     // --- FUNGSI EXPORT KE EXCEL (.XLSX) ---
     function exportToExcel() {
         if(transactions.length === 0) {
-            alert("Tidak ada data untuk diexport!");
+            showToast("Tidak ada data untuk diexport!", "error");
             return;
         }
         
@@ -527,9 +610,10 @@
             // Unduh file Excel
             XLSX.writeFile(wb, `Laporan_Keuangan_NaraPustaka_${new Date().toISOString().slice(0,10)}.xlsx`);
             showLoading(false);
+            showToast("Excel Berhasil diunduh!");
         } catch(e) {
             console.error(e);
-            alert("Gagal membuat file Excel.");
+            showToast("Gagal membuat file Excel.", "error");
             showLoading(false);
         }
     }
