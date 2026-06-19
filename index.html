@@ -4,352 +4,357 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sistem Keuangan - Nara Pustaka</title>
-    <!-- Menggunakan Bootstrap 5 untuk Tampilan UI -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Load Pustaka Pembuat PDF Langsung di Sisi Klien (Bypass Blokir Browser) -->
+    <!-- Tailwind CSS untuk UI Modern & Premium -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome untuk Icon Interaktif -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- html2pdf.js untuk Eksport PDF Berstandar Formal -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-    <!-- Load Pustaka SheetJS untuk Export Excel -->
+    <!-- SheetJS untuk Eksport Excel (.xlsx) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'Segoe UI', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
     <style>
-        body { 
-            background-color: #f4f6f9; 
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-            -webkit-tap-highlight-color: transparent;
+        /* Mengatur scrollbar yang halus */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
         }
-        .card { 
-            border: none; 
-            box-shadow: 0 4px 10px rgba(0,0,0,0.04); 
-            border-radius: 16px; 
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
         }
-        .table-responsive { 
-            background: white; 
-            padding: 15px; 
-            border-radius: 16px; 
-            box-shadow: 0 2px 8px rgba(0,0,0,0.03); 
-        }
-        
-        /* Loading Overlay */
-        .loading-overlay { 
-            display: none; 
-            background: rgba(255,255,255,0.9); 
-            position: fixed; 
-            top:0; 
-            left:0; 
-            width:100%; 
-            height:100%; 
-            justify-content: center; 
-            align-items: center; 
-            z-index: 9999; 
-            flex-direction: column; 
-        }
-        
-        /* Layar Login */
-        #loginScreen { 
-            min-height: 100vh; 
-            display: flex; 
-            align-items: center; 
-            justify-content: center; 
-            padding: 20px;
-        }
-        #loginCard {
-            width: 100%;
-            max-width: 420px;
-            border-radius: 20px;
-            padding: 30px 20px !important;
-        }
-        #mainApp { 
-            display: none; 
-        }
-
-        /* Ukuran Input Adaptif HP */
-        .form-control, .form-select, .btn {
-            min-height: 46px; 
-            border-radius: 10px;
-        }
-        .btn-sm {
-            min-height: auto;
-            padding: 8px 14px;
-        }
-
-        /* Tampilan Kartu Informasi Ringkasan */
-        .summary-box {
-            padding: 12px;
-            border-radius: 12px;
-            border: 1px solid #e9ecef;
-            height: 100%;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-        }
-        .summary-title {
-            font-size: 0.75rem;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-bottom: 4px;
-        }
-        .summary-value {
-            font-size: 1rem;
-            word-break: break-word;
-        }
-
-        @media (max-width: 576px) {
-            h1 { font-size: 1.8rem; }
-            .summary-value { font-size: 0.95rem; }
-            .table-responsive { padding: 10px; }
-            .table th, .table td { font-size: 0.85rem; padding: 10px 8px; }
-        }
-
-        /* Template Khusus Laporan PDF yang Formal */
-        #print-template {
-            display: none;
-            background: white;
-            color: black;
-            padding: 30px;
-            font-family: 'Times New Roman', Times, serif;
-        }
-        .pdf-header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid black; padding-bottom: 10px; }
-        .pdf-header h2 { margin: 0; font-weight: bold; font-size: 24px; text-transform: uppercase; }
-        .pdf-header p { margin: 5px 0 0 0; font-size: 14px; }
-        .pdf-section-title { font-weight: bold; font-size: 16px; margin: 20px 0 10px 0; text-transform: uppercase; }
-        .pdf-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 14px; }
-        .pdf-table th, .pdf-table td { border: 1px solid black; padding: 8px; text-align: left; }
-        .pdf-table th { background-color: #f2f2f2; font-weight: bold; }
-        .pdf-table td.text-right { text-align: right; }
-        .pdf-summary-box { width: 100%; border: 1px solid black; padding: 15px; margin-bottom: 20px; font-size: 14px; }
-        .pdf-summary-row { display: flex; justify-content: space-between; margin-bottom: 8px; }
-        .pdf-summary-row.bold { font-weight: bold; border-top: 1px solid black; padding-top: 8px; margin-top: 8px; }
-        
-        /* Pengaturan Cetak Bawaan Sistem */
-        @media print {
-            .no-print { display: none !important; }
-            body { background: white; color: black; }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 3px;
         }
     </style>
 </head>
-<body>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
 
 <!-- === OVERLAY LOADING === -->
-<div id="loading" class="loading-overlay">
-    <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;" role="status"></div>
-    <h5 id="loadingTitle" class="mt-3 fw-bold text-primary">Sinkronisasi Data...</h5>
-    <p id="loadingDesc" class="text-muted text-center px-4">Mengirim & menyinkronkan data dengan Google Sheets</p>
+<div id="loadingOverlay" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[9999] hidden flex-col items-center justify-center text-white">
+    <div class="bg-white p-6 rounded-2xl shadow-2xl flex flex-col items-center max-w-xs w-full mx-4">
+        <div class="animate-spin rounded-full h-12 w-12 border-4 border-indigo-600 border-t-transparent mb-4"></div>
+        <h5 id="loadingTitle" class="font-bold text-slate-800 text-lg text-center">Sinkronisasi...</h5>
+        <p id="loadingDesc" class="text-slate-500 text-sm text-center mt-1">Menghubungkan ke Google Sheets cloud.</p>
+    </div>
 </div>
 
-<!-- === DIALOG BOX KONFIRMASI KUSTOM (Pengganti confirm() Browser) === -->
-<div id="customDialog" class="position-fixed top-0 start-0 w-100 h-100 justify-content-center align-items-center" style="display: none; background: rgba(0,0,0,0.5); z-index: 10000; padding: 20px;">
-    <div class="card p-4 mx-auto w-100 shadow-lg" style="max-width: 400px; border-radius: 16px; background: white;">
-        <h5 class="fw-bold mb-2 text-dark" id="dialogTitle">Konfirmasi</h5>
-        <p class="text-muted small mb-4" id="dialogText">Apakah Anda yakin ingin melakukan tindakan ini?</p>
-        <div class="d-flex justify-content-end gap-2">
-            <button type="button" id="dialogCancelBtn" class="btn btn-light px-4" style="min-height: auto;">Batal</button>
-            <button type="button" id="dialogConfirmBtn" class="btn btn-danger px-4" style="min-height: auto;">Ya, Lanjutkan</button>
+<!-- === MODAL KONFIRMASI KUSTOM (Anti-Crash HP) === -->
+<div id="confirmModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[9990] hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl animate-in fade-in zoom-in duration-200">
+        <div class="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center text-red-600 mb-4 mx-auto">
+            <i class="fa-solid fa-triangle-exclamation text-xl"></i>
+        </div>
+        <h5 id="confirmTitle" class="text-lg font-bold text-slate-900 text-center">Konfirmasi Tindakan</h5>
+        <p id="confirmText" class="text-slate-500 text-sm text-center mt-2">Apakah Anda yakin ingin melakukan tindakan ini?</p>
+        <div class="grid grid-cols-2 gap-3 mt-6">
+            <button id="confirmCancelBtn" class="py-2.5 px-4 bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-700 font-semibold rounded-xl transition duration-150 text-sm">Batal</button>
+            <button id="confirmOkBtn" class="py-2.5 px-4 bg-red-600 hover:bg-red-700 active:bg-red-800 text-white font-semibold rounded-xl transition duration-150 text-sm">Ya, Hapus</button>
         </div>
     </div>
 </div>
 
-<!-- === FLOATING TOAST NOTIFIKASI KUSTOM (Pengganti alert() Browser) === -->
-<div class="position-fixed bottom-0 start-50 translate-middle-x p-3" style="z-index: 10050; width: 100%; max-width: 400px;">
-    <div id="customToast" class="card p-3 text-white text-center shadow-lg border-0" style="display: none; border-radius: 12px; background: #333; transition: all 0.3s ease;">
-        <span id="toastMessage" class="fw-semibold">Notifikasi</span>
+<!-- === TOAST NOTIFIKASI KUSTOM === -->
+<div class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[9995] w-full max-w-sm px-4">
+    <div id="toastNotification" class="bg-slate-900 text-white p-4 rounded-xl shadow-2xl flex items-center gap-3 transform translate-y-20 opacity-0 transition-all duration-300 pointer-events-none">
+        <div id="toastIcon" class="w-8 h-8 rounded-full flex items-center justify-center text-lg"></div>
+        <span id="toastMessage" class="text-sm font-medium">Notifikasi</span>
     </div>
 </div>
 
 <!-- === LAYAR LOGIN === -->
-<div id="loginScreen">
-    <div id="loginCard" class="card p-4 text-center shadow-lg">
-        <h2 class="fw-bold text-primary mb-1">NARA PUSTAKA</h2>
-        <p class="text-muted mb-4">Portal Keuangan Internal</p>
-        
-        <form id="loginForm">
-            <div class="mb-3 text-start">
-                <label class="form-label fw-bold small text-secondary">Kata Sandi</label>
-                <input type="password" id="passwordInput" class="form-control form-control-lg text-center" placeholder="Masukkan password..." required autocomplete="current-password">
-                <div id="loginError" class="text-danger mt-2 small text-center" style="display: none;">Password salah! Silakan coba lagi.</div>
+<section id="loginScreen" class="flex-1 flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl p-8 shadow-xl border border-slate-100 w-full max-w-md animate-in fade-in duration-300">
+        <div class="text-center mb-8">
+            <div class="w-16 h-16 bg-indigo-100 text-indigo-600 rounded-2xl flex items-center justify-center text-2xl mx-auto mb-4 shadow-inner">
+                <i class="fa-solid fa-book-open-reader"></i>
             </div>
-            <button type="submit" class="btn btn-primary btn-lg w-100 fw-bold shadow-sm">Masuk Sistem</button>
+            <h2 class="text-2xl font-black text-slate-900 tracking-tight">NARA PUSTAKA</h2>
+            <p class="text-slate-400 text-sm mt-1">Sistem Keuangan & Laporan Pajak Internal</p>
+        </div>
+        
+        <form id="loginForm" class="space-y-6">
+            <div>
+                <label class="block text-slate-600 text-xs font-bold uppercase tracking-wider mb-2">Kata Sandi Akses</label>
+                <div class="relative">
+                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
+                        <i class="fa-solid fa-lock"></i>
+                    </span>
+                    <input type="password" id="passwordInput" class="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 focus:border-indigo-500 focus:bg-white rounded-xl text-center font-bold tracking-widest text-lg outline-none transition duration-150" placeholder="••••••••" required autocomplete="current-password">
+                </div>
+                <p id="loginError" class="text-red-500 text-xs text-center mt-2 font-semibold hidden"><i class="fa-solid fa-circle-xmark mr-1"></i> Kata sandi salah. Silakan coba lagi.</p>
+            </div>
+            <button type="submit" class="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-bold rounded-xl shadow-lg shadow-indigo-600/20 transition duration-150">
+                <i class="fa-solid fa-right-to-bracket mr-2"></i>Masuk Sistem
+            </button>
         </form>
     </div>
-</div>
+</section>
 
 <!-- === APLIKASI UTAMA === -->
-<div id="mainApp" class="container my-3 my-md-5 px-3 px-sm-4">
-    <!-- Header -->
-    <div class="text-center mb-4 mb-md-5">
-        <h1 class="fw-bold text-primary">NARA PUSTAKA</h1>
-        <p class="text-muted small">Sistem Pencatatan Keuangan & Laporan Pajak Terintegrasi Google Sheets</p>
-        <hr>
-    </div>
+<main id="mainApp" class="hidden flex-1 flex flex-col">
+    <!-- Navbar Atas -->
+    <nav class="bg-white border-b border-slate-200 py-4 px-4 sticky top-0 z-50 shadow-sm">
+        <div class="max-w-7xl mx-auto flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-indigo-600 text-white rounded-xl flex items-center justify-center text-lg">
+                    <i class="fa-solid fa-book-open"></i>
+                </div>
+                <div>
+                    <h1 class="font-extrabold text-slate-900 leading-none text-base sm:text-lg">Nara Pustaka</h1>
+                    <span class="text-[10px] text-emerald-600 font-semibold flex items-center gap-1 mt-1">
+                        <span class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span> Terhubung ke Google Sheets
+                    </span>
+                </div>
+            </div>
+            <button onclick="logout()" class="p-2 px-3 text-red-600 hover:bg-red-50 active:bg-red-100 rounded-xl transition duration-150 text-sm font-bold flex items-center gap-2">
+                <i class="fa-solid fa-power-off"></i> <span class="hidden sm:inline">Keluar</span>
+            </button>
+        </div>
+    </nav>
 
-    <!-- Form & Summary -->
-    <div class="row g-4 mb-4">
-        <!-- Form Input -->
-        <div class="col-lg-4 no-print">
-            <div class="card p-4">
-                <h5 class="mb-4 fw-bold text-secondary">Tambah Transaksi</h5>
-                <form id="financeForm">
-                    <div class="mb-3">
-                        <label class="form-label text-muted small fw-bold">Tanggal</label>
-                        <input type="date" id="txDate" class="form-control" required>
+    <!-- Konten Dashboard -->
+    <div class="max-w-7xl w-full mx-auto p-4 sm:p-6 flex-1 space-y-6">
+        
+        <!-- Filter Laporan (Sangat Penting untuk Laporan Pajak Bulanan & Tahunan) -->
+        <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200/80">
+            <h5 class="text-slate-800 font-bold text-sm mb-3 flex items-center gap-2">
+                <i class="fa-solid fa-filter text-indigo-600"></i> Periode Laporan Keuangan
+            </h5>
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Filter Tahun</label>
+                    <select id="filterYear" onchange="updateUI()" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm font-semibold text-slate-700 outline-none focus:border-indigo-500 transition">
+                        <option value="all">Semua Tahun</option>
+                        <option value="2026" selected>2026</option>
+                        <option value="2025">2025</option>
+                        <option value="2024">2024</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Filter Bulan</label>
+                    <select id="filterMonth" onchange="updateUI()" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm font-semibold text-slate-700 outline-none focus:border-indigo-500 transition">
+                        <option value="all">Semua Bulan</option>
+                        <option value="01">Januari</option>
+                        <option value="02">Februari</option>
+                        <option value="03">Maret</option>
+                        <option value="04">April</option>
+                        <option value="05">Mei</option>
+                        <option value="06">Juni</option>
+                        <option value="07">Juli</option>
+                        <option value="08">Agustus</option>
+                        <option value="09">September</option>
+                        <option value="10">Oktober</option>
+                        <option value="11">November</option>
+                        <option value="12">Desember</option>
+                    </select>
+                </div>
+                <div class="col-span-2 sm:col-span-2 flex items-end gap-2">
+                    <button onclick="exportToPDF()" class="flex-1 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl py-2 px-3 text-sm flex items-center justify-center gap-2 transition shadow-md shadow-rose-600/10 min-h-[42px]">
+                        <i class="fa-solid fa-file-pdf"></i> Unduh PDF
+                    </button>
+                    <button onclick="exportToExcel()" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl py-2 px-3 text-sm flex items-center justify-center gap-2 transition shadow-md shadow-emerald-600/10 min-h-[42px]">
+                        <i class="fa-solid fa-file-excel"></i> Unduh Excel
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Ringkasan Finansial Widget -->
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+            <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm">
+                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Pemasukan</span>
+                <div id="totalIncome" class="text-base sm:text-xl font-extrabold text-emerald-600 mt-1">Rp 0</div>
+            </div>
+            <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm">
+                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Pengeluaran</span>
+                <div id="totalExpense" class="text-base sm:text-xl font-extrabold text-rose-600 mt-1">Rp 0</div>
+            </div>
+            <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm">
+                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Laba Bersih</span>
+                <div id="netProfit" class="text-base sm:text-xl font-extrabold text-slate-900 mt-1">Rp 0</div>
+            </div>
+            <div class="bg-amber-50 p-4 rounded-2xl border border-amber-200 shadow-sm">
+                <span class="text-[10px] font-bold text-amber-700 uppercase tracking-wider flex items-center gap-1">
+                    Pajak PPh UMKM <span class="bg-amber-200 text-amber-800 text-[8px] font-bold px-1.5 py-0.5 rounded-full">0.5%</span>
+                </span>
+                <div id="taxAmount" class="text-base sm:text-xl font-extrabold text-amber-800 mt-1">Rp 0</div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Form Input Transaksi -->
+            <div class="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm h-fit">
+                <h3 class="text-base font-bold text-slate-900 mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-plus-circle text-indigo-600"></i> Catat Transaksi Baru
+                </h3>
+                <form id="financeForm" class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 mb-1">Tanggal</label>
+                        <input type="date" id="txDate" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium outline-none focus:border-indigo-500 focus:bg-white transition" required>
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label text-muted small fw-bold">Keterangan</label>
-                        <input type="text" id="txDesc" class="form-control" placeholder="Cth: Penjualan Buku A" required>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 mb-1">Keterangan</label>
+                        <input type="text" id="txDesc" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium outline-none focus:border-indigo-500 focus:bg-white transition" placeholder="Cth: Penjualan Buku Novel A" required>
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label text-muted small fw-bold">Jenis Transaksi</label>
-                        <select id="txType" class="form-select">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 mb-1">Jenis Transaksi</label>
+                        <select id="txType" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium outline-none focus:border-indigo-500 focus:bg-white transition">
                             <option value="income">Pemasukan (Omzet)</option>
                             <option value="expense">Pengeluaran</option>
                         </select>
                     </div>
-                    <div class="mb-4">
-                        <label class="form-label text-muted small fw-bold">Jumlah (Rp)</label>
-                        <input type="number" id="txAmount" class="form-control" placeholder="0" required>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 mb-1">Jumlah Nominal (Rp)</label>
+                        <input type="number" id="txAmount" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-indigo-500 focus:bg-white transition" placeholder="0" required>
                     </div>
-                    <button type="submit" class="btn btn-primary w-100 fw-bold shadow-sm">Simpan ke Spreadsheet</button>
+                    <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-bold py-3 px-4 rounded-xl shadow-lg shadow-indigo-600/15 transition flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-cloud-arrow-up"></i> Simpan ke Spreadsheet
+                    </button>
                 </form>
             </div>
-        </div>
 
-        <!-- Ringkasan Laporan -->
-        <div class="col-lg-8">
-            <div class="card p-4 h-100">
-                <div class="d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center gap-3 mb-4">
-                    <h5 class="fw-bold text-secondary m-0">Ringkasan Laporan</h5>
-                    <div class="d-flex flex-wrap gap-2 w-100 w-sm-auto">
-                        <button onclick="fetchData()" class="btn btn-outline-primary btn-sm no-print flex-grow-1 flex-sm-grow-0">🔄 Refresh</button>
-                        <button onclick="exportToPDF()" class="btn btn-danger btn-sm no-print flex-grow-1 flex-sm-grow-0">📄 Cetak PDF</button>
-                        <button onclick="exportToExcel()" class="btn btn-success btn-sm no-print flex-grow-1 flex-sm-grow-0">📊 Unduh Excel</button>
-                        <button onclick="logout()" class="btn btn-outline-secondary btn-sm no-print flex-grow-1 flex-sm-grow-0">Keluar</button>
+            <!-- Tabel Riwayat Transaksi -->
+            <div class="lg:col-span-2 flex flex-col">
+                <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm flex-1 overflow-hidden flex flex-col">
+                    <div class="p-4 border-b border-slate-200 flex justify-between items-center bg-slate-50/50">
+                        <h3 class="text-sm font-bold text-slate-900 flex items-center gap-2">
+                            <i class="fa-solid fa-list-check text-indigo-600"></i> Detail Riwayat Transaksi
+                        </h3>
+                        <button onclick="fetchData()" class="p-1.5 px-3 bg-white border border-slate-200 hover:bg-slate-50 active:bg-slate-100 rounded-lg text-xs font-bold text-slate-600 flex items-center gap-1.5 transition">
+                            <i class="fa-solid fa-rotate"></i> Sinkronisasi
+                        </button>
                     </div>
-                </div>
-                
-                <!-- Grid Ringkasan -->
-                <div class="row text-center g-3">
-                    <div class="col-6 col-md-3">
-                        <div class="summary-box bg-light">
-                            <span class="summary-title text-muted">Pemasukan</span>
-                            <span id="totalIncome" class="fw-bold text-success summary-value">Rp 0</span>
-                        </div>
+                    
+                    <div class="overflow-x-auto flex-1">
+                        <table class="w-full min-w-[600px] text-left border-collapse">
+                            <thead>
+                                <tr class="border-b border-slate-200 text-slate-400 text-[10px] uppercase font-bold tracking-wider bg-slate-50/30">
+                                    <th class="py-3 px-4">Tanggal</th>
+                                    <th class="py-3 px-4">Keterangan</th>
+                                    <th class="py-3 px-4">Jenis</th>
+                                    <th class="py-3 px-4 text-right">Jumlah</th>
+                                    <th class="py-3 px-4 text-center">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="transactionTable" class="divide-y divide-slate-100 text-sm text-slate-700 font-medium">
+                                <tr>
+                                    <td colspan="5" class="py-8 text-center text-slate-400">
+                                        <div class="animate-pulse flex flex-col items-center">
+                                            <i class="fa-solid fa-spinner animate-spin text-2xl mb-2 text-indigo-500"></i>
+                                            Memuat data dari Google Sheets...
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
-                    <div class="col-6 col-md-3">
-                        <div class="summary-box bg-light">
-                            <span class="summary-title text-muted">Pengeluaran</span>
-                            <span id="totalExpense" class="fw-bold text-danger summary-value">Rp 0</span>
-                        </div>
-                    </div>
-                    <div class="col-6 col-md-3">
-                        <div class="summary-box bg-light">
-                            <span class="summary-title text-muted">Laba Bersih</span>
-                            <span id="netProfit" class="fw-bold text-dark summary-value">Rp 0</span>
-                        </div>
-                    </div>
-                    <div class="col-6 col-md-3">
-                        <div class="summary-box bg-warning-subtle border border-warning-subtle">
-                            <span class="summary-title text-warning-emphasis fw-bold">Pajak (0.5%)</span>
-                            <span id="taxAmount" class="fw-bold text-danger summary-value">Rp 0</span>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="mt-4 p-3 bg-light rounded-3 border text-muted small">
-                    <strong>Catatan:</strong> 
-                    <ul class="mb-0 mt-1 ps-3">
-                        <li>Data tersimpan di Google Spreadsheet Anda secara real-time.</li>
-                        <li>Estimasi pajak menggunakan tarif <strong>PPh Final UMKM 0.5%</strong> dari total Pemasukan Kotor (Omzet).</li>
-                    </ul>
                 </div>
             </div>
         </div>
     </div>
+</main>
 
-    <!-- Tabel Data Responsif -->
-    <div class="table-responsive mt-2">
-        <h5 class="fw-bold text-secondary mb-3">Detail Riwayat Transaksi</h5>
-        <table class="table table-hover align-middle">
-            <thead class="table-dark">
+<!-- === TEMPLATE LAPORAN PDF FORMAL (UNTUK KEPERLUAN PAJAK - DIKIRIM KE OFFSCEEN AGAR TIDAK MENGGANGGU LAYOUT) === -->
+<div id="printTemplateContainer" class="absolute left-[-9999px] top-[-9999px] w-[210mm] bg-white text-black p-[20mm] font-serif" style="line-height: 1.5;">
+    <!-- KOP Surat Formal -->
+    <div class="text-center border-b-4 border-double border-black pb-4 mb-6">
+        <h2 class="text-2xl font-bold uppercase tracking-wide">NARA PUSTAKA</h2>
+        <p class="text-xs italic mt-1">Sistem Administrasi Keuangan Internal & Pelaporan Pajak</p>
+        <p class="text-xs mt-0.5">Website: www.narapustaka.com | Kontak Administrasi Keuangan</p>
+    </div>
+
+    <!-- Judul Dokumen -->
+    <div class="text-center mb-6">
+        <h3 class="text-lg font-bold uppercase underline">LAPORAN KEUANGAN & PERHITUNGAN PAJAK</h3>
+        <p class="text-sm mt-1">Periode Laporan: <span id="pdfPeriode">Seluruh Periode</span></p>
+        <p class="text-[10px] text-slate-500 italic">Dicetak secara otomatis pada: <span id="pdfCetakDate"></span></p>
+    </div>
+
+    <!-- Bagian Ringkasan Pajak & Finansial -->
+    <div class="mb-6">
+        <h4 class="text-sm font-bold uppercase mb-2">A. Ringkasan Finansial & Estimasi PPh Final</h4>
+        <table class="w-full border border-black text-sm mb-4">
+            <tbody>
                 <tr>
-                    <th style="width: 20%;">Tanggal</th>
-                    <th style="width: 40%;">Keterangan</th>
-                    <th style="width: 15%;">Jenis</th>
-                    <th style="width: 15%;" class="text-end">Jumlah</th>
-                    <th style="width: 10%;" class="text-center no-print">Aksi</th>
+                    <td class="border border-black p-2 font-bold bg-slate-50 w-1/2">Total Pemasukan Kotor (Omzet)</td>
+                    <td id="pdfTotalIncome" class="border border-black p-2 text-right">Rp 0</td>
+                </tr>
+                <tr>
+                    <td class="border border-black p-2 font-bold bg-slate-50">Total Pengeluaran Operasional</td>
+                    <td id="pdfTotalExpense" class="border border-black p-2 text-right">Rp 0</td>
+                </tr>
+                <tr class="font-bold">
+                    <td class="border border-black p-2 bg-slate-100">Laba / Rugi Bersih</td>
+                    <td id="pdfNetProfit" class="border border-black p-2 text-right">Rp 0</td>
+                </tr>
+                <tr class="font-bold text-red-700">
+                    <td class="border border-black p-2 bg-yellow-50">Estimasi PPh Final UMKM PP 55/2022 (0.5% dari Omzet)</td>
+                    <td id="pdfTaxAmount" class="border border-black p-2 text-right">Rp 0</td>
+                </tr>
+            </tbody>
+        </table>
+        <p class="text-[10px] italic">*) Pajak UMKM (0.5%) dihitung berdasarkan asas PPh Final dari total omzet bruto bulanan/tahunan sebelum dikurangi biaya operasional.</p>
+    </div>
+
+    <!-- Tabel Detail Transaksi Kas -->
+    <div>
+        <h4 class="text-sm font-bold uppercase mb-2">B. Buku Kas Kas Rincian Transaksi</h4>
+        <table class="w-full border-collapse border border-black text-xs">
+            <thead>
+                <tr class="bg-slate-100 font-bold">
+                    <th class="border border-black p-2 text-center" style="width: 15%">Tanggal</th>
+                    <th class="border border-black p-2" style="width: 50%">Keterangan Transaksi</th>
+                    <th class="border border-black p-2 text-center" style="width: 15%">Jenis</th>
+                    <th class="border border-black p-2 text-right" style="width: 20%">Jumlah (IDR)</th>
                 </tr>
             </thead>
-            <tbody id="transactionTable">
-                <tr><td colspan="5" class="text-center text-muted py-4">Memuat data dari Google Sheets...</td></tr>
+            <tbody id="pdfTableBody">
+                <!-- Data akan dimuat melalui JavaScript -->
             </tbody>
         </table>
     </div>
-</div>
 
-<!-- === TEMPLATE LAPORAN PDF FORMAL (TIDAK TERLIHAT DI WEB) === -->
-<div id="print-template">
-    <div class="pdf-header">
-        <h2>LAPORAN KEUANGAN</h2>
-        <h3 style="margin: 5px 0 0 0;">NARA PUSTAKA</h3>
-        <p>Tanggal Cetak: <span id="pdf-date"></span></p>
-    </div>
-
-    <div class="pdf-section-title">A. Ringkasan Finansial</div>
-    <div class="pdf-summary-box">
-        <div class="pdf-summary-row">
-            <span>Total Pemasukan (Omzet)</span>
-            <span id="pdf-income">Rp 0</span>
+    <!-- Tanda Tangan Pengesahan -->
+    <div class="mt-12 flex justify-between text-xs">
+        <div>
+            <p>Mengetahui,</p>
+            <p class="font-bold mt-16">Pimpinan Nara Pustaka</p>
         </div>
-        <div class="pdf-summary-row">
-            <span>Total Pengeluaran</span>
-            <span id="pdf-expense">Rp 0</span>
+        <div class="text-right">
+            <p>Jakarta, <span id="pdfSignDate"></span></p>
+            <p class="font-bold mt-16">Staff Administrasi Keuangan</p>
         </div>
-        <div class="pdf-summary-row bold">
-            <span>Laba Bersih</span>
-            <span id="pdf-profit">Rp 0</span>
-        </div>
-        <div class="pdf-summary-row bold" style="color: #d32f2f; margin-top: 15px;">
-            <span>Estimasi PPh Final UMKM (0.5% dari Omzet)</span>
-            <span id="pdf-tax">Rp 0</span>
-        </div>
-    </div>
-
-    <div class="pdf-section-title">B. Rincian Transaksi</div>
-    <table class="pdf-table">
-        <thead>
-            <tr>
-                <th style="width: 15%">Tanggal</th>
-                <th style="width: 45%">Keterangan</th>
-                <th style="width: 15%">Jenis</th>
-                <th style="width: 25%" class="text-right">Jumlah</th>
-            </tr>
-        </thead>
-        <tbody id="pdf-table-body">
-            <!-- Data akan dimuat melalui JavaScript -->
-        </tbody>
-    </table>
-    
-    <div style="margin-top: 40px; text-align: right; font-size: 14px;">
-        <p>Dilaporkan oleh,</p>
-        <br><br><br>
-        <p><strong>Nara Pustaka</strong></p>
     </div>
 </div>
 
 <script>
-    // --- KONFIGURASI ---
+    // --- KONFIGURASI API SPREADSHEET ---
     const APP_PASSWORD = "narapustaka";
     const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwudvegLS5I2UxZWNQvbYcbxpjF7SdhxAK_A99rHz6PO2h5QmAlEiuA1SSOEBzVCDL_Nw/exec";
 
-    // --- VARIABEL GLOBAL ---
+    // --- STATE UTAMA ---
     let transactions = [];
+    let currentFilterData = [];
+
+    // Ambil Referensi Elemen DOM
     const loginForm = document.getElementById('loginForm');
     const mainForm = document.getElementById('financeForm');
     const tableBody = document.getElementById('transactionTable');
-    const loading = document.getElementById('loading');
-    const loadingTitle = document.getElementById('loadingTitle');
-    const loadingDesc = document.getElementById('loadingDesc');
-
-    // Set tanggal hari ini sebagai default di form
-    document.getElementById('txDate').valueAsDate = new Date();
+    
+    // Set default input tanggal ke hari ini (Sangat aman untuk HP)
+    document.getElementById('txDate').value = new Date().toISOString().split('T')[0];
 
     // --- FUNGSI LOGIN ---
     loginForm.addEventListener('submit', function(e) {
@@ -357,53 +362,65 @@
         const pwd = document.getElementById('passwordInput').value;
         
         if(pwd === APP_PASSWORD) {
-            document.getElementById('loginError').style.display = 'none';
-            document.getElementById('loginScreen').style.display = 'none';
-            document.getElementById('mainApp').style.display = 'block';
+            document.getElementById('loginError').classList.add('hidden');
+            document.getElementById('loginScreen').classList.add('hidden');
+            document.getElementById('mainApp').classList.remove('hidden');
             fetchData(); 
         } else {
-            document.getElementById('loginError').style.display = 'block';
+            document.getElementById('loginError').classList.remove('hidden');
         }
     });
 
     function logout() {
         showConfirm("Keluar Sistem", "Apakah Anda yakin ingin keluar?", function() {
-            document.getElementById('mainApp').style.display = 'none';
-            document.getElementById('loginScreen').style.display = 'flex';
+            document.getElementById('mainApp').classList.add('hidden');
+            document.getElementById('loginScreen').classList.remove('hidden');
             document.getElementById('passwordInput').value = '';
             transactions = []; 
-            showToast("Berhasil keluar.");
+            showToast("Berhasil keluar dari sistem.", "info");
         });
     }
 
-    // --- FUNGSI LOADING ---
-    function showLoading(show, title = "Sinkronisasi Data...", desc = "Mengirim & menyinkronkan data dengan Google Sheets") {
-        loadingTitle.innerText = title;
-        loadingDesc.innerText = desc;
-        loading.style.display = show ? 'flex' : 'none';
+    // --- LOADING OVERLAY ---
+    function showLoading(show, title = "Sinkronisasi...", desc = "Menghubungkan ke Google Sheets...") {
+        const overlay = document.getElementById('loadingOverlay');
+        document.getElementById('loadingTitle').innerText = title;
+        document.getElementById('loadingDesc').innerText = desc;
+        
+        if(show) {
+            overlay.classList.remove('hidden');
+            overlay.classList.add('flex');
+        } else {
+            overlay.classList.add('hidden');
+            overlay.classList.remove('flex');
+        }
     }
 
-    // --- FUNGSI AMBIL DATA DARI SPREADSHEET ---
+    // --- STREAMING_CHUNK:Implementing API synchronization... -->
+    // --- AMBIL DATA DARI GOOGLE SPREADSHEET ---
     function fetchData() {
-        showLoading(true, "Sinkronisasi Data...", "Mengambil data keuangan terbaru dari Google Sheets...");
+        showLoading(true, "Sinkronisasi...", "Mengambil data transaksi terbaru...");
         fetch(WEB_APP_URL)
             .then(res => res.json())
             .then(data => {
-                transactions = data;
+                transactions = Array.isArray(data) ? data : [];
                 updateUI();
                 showLoading(false);
             })
             .catch(err => {
                 console.error(err);
-                showToast("Gagal mengambil data. Pastikan koneksi internet stabil.", "error");
+                showToast("Gagal mengambil data dari cloud.", "error");
                 showLoading(false);
+                
+                // Fallback jika API bermasalah agar tabel tidak menampilkan spinner selamanya
+                tableBody.innerHTML = '<tr><td colspan="5" class="py-8 text-center text-slate-400">Gagal terhubung ke server cloud. Silakan klik refresh.</td></tr>';
             });
     }
 
-    // --- FUNGSI TAMBAH DATA ---
+    // --- TAMBAH DATA ---
     mainForm.addEventListener('submit', function(e) {
         e.preventDefault();
-        showLoading(true, "Menyimpan Transaksi...", "Mengirim dan mencatat transaksi ke Google Sheets...");
+        showLoading(true, "Menyimpan...", "Mengirim data transaksi baru...");
         
         const payload = {
             action: 'add',
@@ -422,20 +439,20 @@
         .then(res => res.json())
         .then(result => {
             mainForm.reset();
-            document.getElementById('txDate').valueAsDate = new Date(); 
+            document.getElementById('txDate').value = new Date().toISOString().split('T')[0]; 
             fetchData(); 
-            showToast("Transaksi berhasil disimpan!");
+            showToast("Transaksi berhasil dicatat ke cloud!", "success");
         })
         .catch(err => {
-            showToast("Gagal menyimpan data ke Spreadsheet.", "error");
+            showToast("Gagal menyimpan transaksi.", "error");
             showLoading(false);
         });
     });
 
-    // --- FUNGSI HAPUS DATA ---
+    // --- HAPUS DATA ---
     function deleteTransaction(id) {
-        showConfirm("Hapus Transaksi", "Apakah Anda yakin ingin menghapus data ini dari Spreadsheet?", function() {
-            showLoading(true, "Menghapus Transaksi...", "Menghapus baris transaksi dari Google Sheets...");
+        showConfirm("Hapus Transaksi", "Apakah Anda yakin ingin menghapus data ini dari Google Spreadsheet secara permanen?", function() {
+            showLoading(true, "Menghapus...", "Menghapus data di cloud...");
 
             fetch(WEB_APP_URL, {
                 method: 'POST',
@@ -445,215 +462,239 @@
             .then(res => res.json())
             .then(result => {
                 fetchData(); 
-                showToast("Transaksi berhasil dihapus.");
+                showToast("Transaksi berhasil dihapus.", "success");
             })
             .catch(err => {
-                showToast("Gagal menghapus data.", "error");
+                showToast("Gagal menghapus data dari cloud.", "error");
                 showLoading(false);
             });
         });
     }
 
-    // --- SISTEM POPUP DIALOG & TOAST KUSTOM ---
-    function showToast(message, type = "success") {
-        const toast = document.getElementById('customToast');
-        const text = document.getElementById('toastMessage');
-        text.innerText = message;
-        
-        if (type === "success") {
-            toast.style.background = "#198754"; // Hijau Bootstrap
-        } else {
-            toast.style.background = "#dc3545"; // Merah Bootstrap
-        }
-        
-        toast.style.display = "block";
-        setTimeout(() => {
-            toast.style.display = "none";
-        }, 3000);
-    }
-
-    function showConfirm(title, text, confirmCallback) {
-        const dialog = document.getElementById('customDialog');
-        document.getElementById('dialogTitle').innerText = title;
-        document.getElementById('dialogText').innerText = text;
-        
-        dialog.style.display = "flex";
-        
-        const confirmBtn = document.getElementById('dialogConfirmBtn');
-        const cancelBtn = document.getElementById('dialogCancelBtn');
-        
-        // Bersihkan event listener sebelumnya
-        const newConfirmBtn = confirmBtn.cloneNode(true);
-        confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
-        
-        const newCancelBtn = cancelBtn.cloneNode(true);
-        cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
-
-        newConfirmBtn.addEventListener('click', function() {
-            dialog.style.display = "none";
-            confirmCallback();
-        });
-        
-        newCancelBtn.addEventListener('click', function() {
-            dialog.style.display = "none";
-        });
-    }
-
-    // --- FUNGSI GENERATE PDF FORMAL UNTUK PAJAK ---
+    // --- STREAMING_CHUNK:Implementing the PDF and Excel generators... -->
+    // --- EXPORT PDF FORMAL ---
     function exportToPDF() {
-        showLoading(true, "Membuat PDF...", "Menyiapkan laporan keuangan formal... Mohon tunggu.");
+        if(currentFilterData.length === 0) {
+            showToast("Tidak ada data laporan untuk dicetak!", "error");
+            return;
+        }
+
+        showLoading(true, "Membuat PDF...", "Menyusun berkas dokumen formal pajak...");
+
+        const filterYear = document.getElementById('filterYear').value;
+        const filterMonth = document.getElementById('filterMonth').value;
+        const monthNames = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
         
-        // Siapkan data ke dalam Template Print
-        document.getElementById('pdf-date').innerText = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
-        
-        // Ambil nilai ringkasan saat ini
-        const totalIncome = transactions.filter(t => t.type === 'income').reduce((sum, t) => sum + parseFloat(t.amount), 0);
-        const totalExpense = transactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + parseFloat(t.amount), 0);
+        // Atur Info Judul Periode PDF
+        let periodeText = "Seluruh Periode";
+        if (filterYear !== 'all') {
+            periodeText = "Tahun " + filterYear;
+            if (filterMonth !== 'all') {
+                periodeText = monthNames[parseInt(filterMonth) - 1] + " " + filterYear;
+            }
+        }
+        document.getElementById('pdfPeriode').innerText = periodeText;
+
+        const formatOptions = { day: 'numeric', month: 'long', year: 'numeric' };
+        document.getElementById('pdfCetakDate').innerText = new Date().toLocaleDateString('id-ID', formatOptions);
+        document.getElementById('pdfSignDate').innerText = new Date().toLocaleDateString('id-ID', formatOptions);
+
+        // Hitung akumulasi
+        let totalIncome = 0;
+        let totalExpense = 0;
+        currentFilterData.forEach(t => {
+            if (t.type === 'income') totalIncome += parseFloat(t.amount);
+            else totalExpense += parseFloat(t.amount);
+        });
         const netProfit = totalIncome - totalExpense;
         const tax = totalIncome * 0.005;
 
-        document.getElementById('pdf-income').innerText = formatRupiah(totalIncome);
-        document.getElementById('pdf-expense').innerText = formatRupiah(totalExpense);
-        document.getElementById('pdf-profit').innerText = formatRupiah(netProfit);
-        document.getElementById('pdf-tax').innerText = formatRupiah(tax);
+        // Terapkan nilai ke ringkasan PDF
+        document.getElementById('pdfTotalIncome').innerText = formatRupiah(totalIncome);
+        document.getElementById('pdfTotalExpense').innerText = formatRupiah(totalExpense);
+        document.getElementById('pdfNetProfit').innerText = formatRupiah(netProfit);
+        document.getElementById('pdfTaxAmount').innerText = formatRupiah(tax);
+
+        // Urutkan rincian dari yang terlama ke yang terbaru (Standar Akuntansi Formal)
+        let sortedPrintData = [...currentFilterData].sort((a, b) => new Date(a.date) - new Date(b.date));
 
         // Isi Tabel Rincian PDF
-        const pdfTbody = document.getElementById('pdf-table-body');
+        const pdfTbody = document.getElementById('pdfTableBody');
         pdfTbody.innerHTML = '';
-        
-        let sortedTransactions = [...transactions].sort((a, b) => new Date(a.date) - new Date(b.date)); // Urut dari terlama untuk laporan
-        
-        sortedTransactions.forEach(t => {
+        sortedPrintData.forEach(t => {
             let dateObj = new Date(t.date);
             let formattedDate = ("0" + dateObj.getDate()).slice(-2) + "/" + ("0" + (dateObj.getMonth() + 1)).slice(-2) + "/" + dateObj.getFullYear();
             
-            let row = `<tr>
-                <td>${formattedDate}</td>
-                <td>${t.desc}</td>
-                <td>${t.type === 'income' ? 'Pemasukan' : 'Pengeluaran'}</td>
-                <td class="text-right">${formatRupiah(t.amount)}</td>
-            </tr>`;
+            let row = `
+                <tr>
+                    <td class="border border-black p-2 text-center">${formattedDate}</td>
+                    <td class="border border-black p-2">${t.desc}</td>
+                    <td class="border border-black p-2 text-center">${t.type === 'income' ? 'Pemasukan' : 'Pengeluaran'}</td>
+                    <td class="border border-black p-2 text-right">${formatRupiah(t.amount)}</td>
+                </tr>
+            `;
             pdfTbody.insertAdjacentHTML('beforeend', row);
         });
 
-        const printElement = document.getElementById('print-template');
-        printElement.style.display = 'block'; // Tampilkan template (tersembunyi) sementara untuk html2pdf
+        const element = document.getElementById('printTemplateContainer');
+        const filename = `Laporan_Keuangan_NaraPustaka_${periodeText.replace(/ /g, "_")}.pdf`;
 
-        const options = {
+        const opt = {
             margin:       15,
-            filename:     `Laporan_Keuangan_NaraPustaka_${new Date().toISOString().slice(0,10)}.pdf`,
+            filename:     filename,
             image:        { type: 'jpeg', quality: 0.98 },
-            html2canvas:  { scale: 2, logging: false },
+            html2canvas:  { scale: 2, useCORS: true },
             jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
         };
 
-        html2pdf().set(options).from(printElement).save().then(() => {
-            printElement.style.display = 'none'; // Sembunyikan kembali
+        html2pdf().set(opt).from(element).save().then(() => {
             showLoading(false);
-            showToast("PDF Berhasil diunduh!");
+            showToast("Laporan PDF Berhasil Diunduh!", "success");
         }).catch(err => {
-            console.error("Gagal cetak otomatis", err);
-            printElement.style.display = 'none';
+            console.error(err);
             showLoading(false);
-            showToast("Terjadi kesalahan saat membuat PDF.", "error");
+            showToast("Terjadi kesalahan pembuatan PDF.", "error");
         });
     }
 
-    // --- FUNGSI EXPORT KE EXCEL (.XLSX) ---
+    // --- EXPORT EXCEL (.XLSX) ---
     function exportToExcel() {
-        if(transactions.length === 0) {
-            showToast("Tidak ada data untuk diexport!", "error");
+        if(currentFilterData.length === 0) {
+            showToast("Tidak ada data untuk diekspor!", "error");
             return;
         }
         
-        showLoading(true, "Membuat Excel...", "Menyusun data ke dalam format Spreadsheet...");
+        showLoading(true, "Membuat Excel...", "Menyusun data ke spreadsheet...");
 
-        const totalIncome = transactions.filter(t => t.type === 'income').reduce((sum, t) => sum + parseFloat(t.amount), 0);
-        const totalExpense = transactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + parseFloat(t.amount), 0);
+        const filterYear = document.getElementById('filterYear').value;
+        const filterMonth = document.getElementById('filterMonth').value;
+        const monthNames = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+        
+        let periodeText = "Seluruh Periode";
+        if (filterYear !== 'all') {
+            periodeText = "Tahun " + filterYear;
+            if (filterMonth !== 'all') {
+                periodeText = monthNames[parseInt(filterMonth) - 1] + " " + filterYear;
+            }
+        }
+
+        // Kalkulasi Ringkasan
+        let totalIncome = 0;
+        let totalExpense = 0;
+        currentFilterData.forEach(t => {
+            if (t.type === 'income') totalIncome += parseFloat(t.amount);
+            else totalExpense += parseFloat(t.amount);
+        });
         const netProfit = totalIncome - totalExpense;
         const tax = totalIncome * 0.005;
 
-        // Susun struktur data Excel
+        // Membangun array data Excel
         let excelData = [
-            ["LAPORAN KEUANGAN NARA PUSTAKA"],
-            ["Tanggal Cetak:", new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })],
+            ["LAPORAN KEUANGAN & PAJAK NARA PUSTAKA"],
+            ["Periode Laporan:", periodeText],
+            ["Tanggal Unduh:", new Date().toLocaleDateString('id-ID')],
             [],
             ["RINGKASAN FINANSIAL"],
             ["Total Pemasukan (Omzet)", totalIncome],
             ["Total Pengeluaran", totalExpense],
-            ["Laba Bersih", netProfit],
-            ["Estimasi PPh Final UMKM (0.5%)", tax],
+            ["Laba / Rugi Bersih", netProfit],
+            ["Estimasi PPh Final UMKM (0.5% dari Omzet)", tax],
             [],
-            ["RINCIAN TRANSAKSI"],
-            ["Tanggal", "Keterangan", "Jenis", "Jumlah (Rp)"]
+            ["RINCIAN BUKU KAS HARIAN"],
+            ["Tanggal", "Keterangan Transaksi", "Jenis Alur Kas", "Jumlah (IDR)"]
         ];
 
-        let sortedTransactions = [...transactions].sort((a, b) => new Date(a.date) - new Date(b.date));
-        sortedTransactions.forEach(t => {
+        // Rincian diurutkan dari kas terlama ke terbaru (Akuntansi Standar)
+        let sortedExcelData = [...currentFilterData].sort((a, b) => new Date(a.date) - new Date(b.date));
+
+        sortedExcelData.forEach(t => {
             let dateObj = new Date(t.date);
             let formattedDate = ("0" + dateObj.getDate()).slice(-2) + "/" + ("0" + (dateObj.getMonth() + 1)).slice(-2) + "/" + dateObj.getFullYear();
-            
             excelData.push([
-                formattedDate, 
-                t.desc, 
-                t.type === 'income' ? 'Pemasukan' : 'Pengeluaran', 
+                formattedDate,
+                t.desc,
+                t.type === 'income' ? 'Pemasukan' : 'Pengeluaran',
                 parseFloat(t.amount)
             ]);
         });
 
         try {
-            // Buat Workbook dan Worksheet
-            let ws = XLSX.utils.aoa_to_sheet(excelData);
-            let wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "Laporan Keuangan");
+            const worksheet = XLSX.utils.aoa_to_sheet(excelData);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Laporan Keuangan");
             
-            // Unduh file Excel
-            XLSX.writeFile(wb, `Laporan_Keuangan_NaraPustaka_${new Date().toISOString().slice(0,10)}.xlsx`);
+            // Generate Unduhan file .xlsx
+            XLSX.writeFile(workbook, `Laporan_Keuangan_NaraPustaka_${periodeText.replace(/ /g, "_")}.xlsx`);
             showLoading(false);
-            showToast("Excel Berhasil diunduh!");
+            showToast("Berkas Excel berhasil diunduh!", "success");
         } catch(e) {
             console.error(e);
-            showToast("Gagal membuat file Excel.", "error");
             showLoading(false);
+            showToast("Gagal menghasilkan berkas Excel.", "error");
         }
     }
 
-    // --- FUNGSI FORMAT RUPIAH ---
+    // --- STREAMING_CHUNK:Updating the interactive user interface... -->
+    // --- FORMAT MATA UANG RUPIAH ---
     function formatRupiah(number) {
         return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(number);
     }
 
-    // --- FUNGSI UPDATE TAMPILAN TABEL & PERHITUNGAN ---
+    // --- UPDATE INTERFACE & TABEL ---
     function updateUI() {
         tableBody.innerHTML = '';
         
-        if(transactions.length === 0) {
-            tableBody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">Belum ada data transaksi. Mulai tambahkan data baru.</td></tr>';
+        const filterYear = document.getElementById('filterYear').value;
+        const filterMonth = document.getElementById('filterMonth').value;
+
+        // Penyaringan Data (Filter Aktif)
+        currentFilterData = transactions.filter(t => {
+            if(!t.date) return false;
+            let parts = t.date.split('-'); // YYYY-MM-DD
+            if (parts.length < 3) return false;
+            
+            let y = parts[0];
+            let m = parts[1];
+
+            let yearMatch = (filterYear === 'all' || y === filterYear);
+            let monthMatch = (filterMonth === 'all' || m === filterMonth);
+
+            return yearMatch && monthMatch;
+        });
+
+        if(currentFilterData.length === 0) {
+            tableBody.innerHTML = '<tr><td colspan="5" class="py-8 text-center text-slate-400">Belum ada transaksi pada periode terpilih.</td></tr>';
         }
-        
+
         let totalIncome = 0;
         let totalExpense = 0;
 
-        // Urutkan transaksi dari yang terbaru ke terlama
-        transactions.sort((a, b) => new Date(b.date) - new Date(a.date));
+        // Urutkan rincian tabel utama di web berdasarkan tanggal terbaru (Sesuai kenyamanan web harian)
+        let sortedViewData = [...currentFilterData].sort((a, b) => new Date(b.date) - new Date(a.date));
 
-        transactions.forEach(t => {
+        sortedViewData.forEach(t => {
             const amount = parseFloat(t.amount) || 0;
             if(t.type === 'income') totalIncome += amount;
             else totalExpense += amount;
 
-            // Format tanggal (DD/MM/YYYY)
             let dateObj = new Date(t.date);
             let formattedDate = ("0" + dateObj.getDate()).slice(-2) + "/" + ("0" + (dateObj.getMonth() + 1)).slice(-2) + "/" + dateObj.getFullYear();
 
             const row = `
-                <tr>
-                    <td class="fw-medium">${formattedDate}</td>
-                    <td>${t.desc}</td>
-                    <td><span class="badge rounded-pill ${t.type === 'income' ? 'bg-success' : 'bg-danger'}">${t.type === 'income' ? 'Masuk' : 'Keluar'}</span></td>
-                    <td class="text-end fw-bold ${t.type === 'income' ? 'text-success' : 'text-danger'}">${formatRupiah(amount)}</td>
-                    <td class="text-center no-print">
-                        <button onclick="deleteTransaction(${t.id})" class="btn btn-sm btn-outline-danger shadow-sm">Hapus</button>
+                <tr class="hover:bg-slate-50/80 transition duration-100">
+                    <td class="py-3.5 px-4 font-semibold text-slate-900">${formattedDate}</td>
+                    <td class="py-3.5 px-4 text-slate-600 max-w-[200px] truncate sm:max-w-none">${t.desc}</td>
+                    <td class="py-3.5 px-4">
+                        <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold ${t.type === 'income' ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}">
+                            <span class="w-1.5 h-1.5 rounded-full ${t.type === 'income' ? 'bg-emerald-500' : 'bg-rose-500'}"></span>
+                            ${t.type === 'income' ? 'Masuk' : 'Keluar'}
+                        </span>
+                    </td>
+                    <td class="py-3.5 px-4 text-right font-bold ${t.type === 'income' ? 'text-emerald-600' : 'text-rose-600'}">${formatRupiah(amount)}</td>
+                    <td class="py-3.5 px-4 text-center">
+                        <button onclick="deleteTransaction(${t.id})" class="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg transition duration-150 min-h-[36px] min-w-[36px]">
+                            <i class="fa-regular fa-trash-can"></i>
+                        </button>
                     </td>
                 </tr>
             `;
@@ -661,21 +702,72 @@
         });
 
         const netProfit = totalIncome - totalExpense;
-        const tax = totalIncome * 0.005; 
+        const tax = totalIncome * 0.005; // 0.5% PPh Final UMKM
 
-        // Update angka di Ringkasan Laporan
+        // Tempelkan nilai ringkasan ke Dashboard Widget
         document.getElementById('totalIncome').innerText = formatRupiah(totalIncome);
         document.getElementById('totalExpense').innerText = formatRupiah(totalExpense);
         document.getElementById('taxAmount').innerText = formatRupiah(tax);
         
-        // Atur warna Laba Bersih
         const netProfitEl = document.getElementById('netProfit');
         netProfitEl.innerText = formatRupiah(netProfit);
         if(netProfit < 0) {
-            netProfitEl.className = "fw-bold text-danger summary-value";
+            netProfitEl.className = "text-base sm:text-xl font-extrabold text-rose-600 mt-1";
         } else {
-            netProfitEl.className = "fw-bold text-dark summary-value";
+            netProfitEl.className = "text-base sm:text-xl font-extrabold text-slate-900 mt-1";
         }
+    }
+
+    // --- MODAL KONFIRMASI KUSTOM (Pengganti confirm() browser) ---
+    let confirmCallbackFn = null;
+    function showConfirm(title, text, confirmCallback) {
+        document.getElementById('confirmTitle').innerText = title;
+        document.getElementById('confirmText').innerText = text;
+        confirmCallbackFn = confirmCallback;
+        
+        const modal = document.getElementById('confirmModal');
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+    }
+
+    document.getElementById('confirmCancelBtn').addEventListener('click', function() {
+        document.getElementById('confirmModal').classList.add('hidden');
+        document.getElementById('confirmModal').classList.remove('flex');
+        confirmCallbackFn = null;
+    });
+
+    document.getElementById('confirmOkBtn').addEventListener('click', function() {
+        document.getElementById('confirmModal').classList.add('hidden');
+        document.getElementById('confirmModal').classList.remove('flex');
+        if (confirmCallbackFn) confirmCallbackFn();
+    });
+
+    // --- TOAST KUSTOM (Pengganti alert() browser) ---
+    function showToast(message, type = "success") {
+        const toast = document.getElementById('toastNotification');
+        const icon = document.getElementById('toastIcon');
+        const text = document.getElementById('toastMessage');
+
+        text.innerText = message;
+        
+        // Atur Style warna tipe toast
+        if (type === "success") {
+            toast.className = "bg-emerald-900 text-white p-4 rounded-xl shadow-2xl flex items-center gap-3 transform transition-all duration-300 pointer-events-auto border border-emerald-800";
+            icon.innerHTML = '<i class="fa-solid fa-circle-check text-emerald-400"></i>';
+        } else if (type === "error") {
+            toast.className = "bg-rose-900 text-white p-4 rounded-xl shadow-2xl flex items-center gap-3 transform transition-all duration-300 pointer-events-auto border border-rose-800";
+            icon.innerHTML = '<i class="fa-solid fa-circle-exclamation text-rose-400"></i>';
+        } else {
+            toast.className = "bg-slate-900 text-white p-4 rounded-xl shadow-2xl flex items-center gap-3 transform transition-all duration-300 pointer-events-auto border border-slate-800";
+            icon.innerHTML = '<i class="fa-solid fa-circle-info text-sky-400"></i>';
+        }
+
+        // Jalankan transisi geser ke atas
+        toast.classList.remove('translate-y-20', 'opacity-0');
+        
+        setTimeout(() => {
+            toast.classList.add('translate-y-20', 'opacity-0');
+        }, 3000);
     }
 </script>
 </body>
