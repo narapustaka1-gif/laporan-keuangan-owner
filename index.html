@@ -8,6 +8,8 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Load Pustaka Pembuat PDF Langsung di Sisi Klien (Bypass Blokir Browser) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <!-- Load Pustaka SheetJS untuk Export Excel -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     
     <style>
         body { 
@@ -94,28 +96,28 @@
             .table th, .table td { font-size: 0.85rem; padding: 10px 8px; }
         }
 
-        body.printing-pdf {
-            background-color: #ffffff !important;
-            padding: 0 !important;
-            margin: 0 !important;
+        /* Template Khusus Laporan PDF yang Formal */
+        #print-template {
+            display: none;
+            background: white;
+            color: black;
+            padding: 30px;
+            font-family: 'Times New Roman', Times, serif;
         }
-        body.printing-pdf .no-print { 
-            display: none !important; 
-        }
-        body.printing-pdf .card { 
-            box-shadow: none !important; 
-            border: 1px solid #dee2e6 !important; 
-        }
-        body.printing-pdf .summary-box {
-            border: 1px solid #dee2e6 !important;
-        }
-    </style>
-</head>
-<body>
-
-<!-- === OVERLAY LOADING === -->
-<div id="loading" class="loading-overlay">
-    <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;" role="status"></div>
+        .pdf-header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid black; padding-bottom: 10px; }
+        .pdf-header h2 { margin: 0; font-weight: bold; font-size: 24px; text-transform: uppercase; }
+        .pdf-header p { margin: 5px 0 0 0; font-size: 14px; }
+        .pdf-section-title { font-weight: bold; font-size: 16px; margin: 20px 0 10px 0; text-transform: uppercase; }
+        .pdf-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 14px; }
+        .pdf-table th, .pdf-table td { border: 1px solid black; padding: 8px; text-align: left; }
+        .pdf-table th { background-color: #f2f2f2; font-weight: bold; }
+        .pdf-table td.text-right { text-align: right; }
+        .pdf-summary-box { width: 100%; border: 1px solid black; padding: 15px; margin-bottom: 20px; font-size: 14px; }
+        .pdf-summary-row { display: flex; justify-content: space-between; margin-bottom: 8px; }
+        .pdf-summary-row.bold { font-weight: bold; border-top: 1px solid black; padding-top: 8px; margin-top: 8px; }
+        
+        /* Pengaturan Khusus untuk Cetak PDF bawaan (fallback) */
+        @media print {
     <h5 id="loadingTitle" class="mt-3 fw-bold text-primary">Sinkronisasi Data...</h5>
     <p id="loadingDesc" class="text-muted text-center px-4">Mengirim & menyinkronkan data dengan Google Sheets</p>
 </div>
@@ -184,8 +186,9 @@
                     <h5 class="fw-bold text-secondary m-0">Ringkasan Laporan</h5>
                     <div class="d-flex flex-wrap gap-2 w-100 w-sm-auto">
                         <button onclick="fetchData()" class="btn btn-outline-primary btn-sm no-print flex-grow-1 flex-sm-grow-0">🔄 Refresh</button>
-                        <button onclick="exportToPDF()" class="btn btn-success btn-sm no-print flex-grow-1 flex-sm-grow-0">🖨️ Cetak PDF</button>
-                        <button onclick="logout()" class="btn btn-outline-danger btn-sm no-print flex-grow-1 flex-sm-grow-0">Keluar</button>
+                        <button onclick="exportToPDF()" class="btn btn-danger btn-sm no-print flex-grow-1 flex-sm-grow-0">📄 Cetak PDF</button>
+                        <button onclick="exportToExcel()" class="btn btn-success btn-sm no-print flex-grow-1 flex-sm-grow-0">📊 Unduh Excel</button>
+                        <button onclick="logout()" class="btn btn-outline-secondary btn-sm no-print flex-grow-1 flex-sm-grow-0">Keluar</button>
                     </div>
                 </div>
                 
@@ -245,6 +248,56 @@
                 <tr><td colspan="5" class="text-center text-muted py-4">Memuat data dari Google Sheets...</td></tr>
             </tbody>
         </table>
+    </div>
+</div>
+
+<!-- === TEMPLATE LAPORAN PDF FORMAL (TIDAK TERLIHAT DI WEB) === -->
+<div id="print-template">
+    <div class="pdf-header">
+        <h2>LAPORAN KEUANGAN</h2>
+        <h3 style="margin: 5px 0 0 0;">NARA PUSTAKA</h3>
+        <p>Tanggal Cetak: <span id="pdf-date"></span></p>
+    </div>
+
+    <div class="pdf-section-title">A. Ringkasan Finansial</div>
+    <div class="pdf-summary-box">
+        <div class="pdf-summary-row">
+            <span>Total Pemasukan (Omzet)</span>
+            <span id="pdf-income">Rp 0</span>
+        </div>
+        <div class="pdf-summary-row">
+            <span>Total Pengeluaran</span>
+            <span id="pdf-expense">Rp 0</span>
+        </div>
+        <div class="pdf-summary-row bold">
+            <span>Laba Bersih</span>
+            <span id="pdf-profit">Rp 0</span>
+        </div>
+        <div class="pdf-summary-row bold" style="color: #d32f2f; margin-top: 15px;">
+            <span>Estimasi PPh Final UMKM (0.5% dari Omzet)</span>
+            <span id="pdf-tax">Rp 0</span>
+        </div>
+    </div>
+
+    <div class="pdf-section-title">B. Rincian Transaksi</div>
+    <table class="pdf-table">
+        <thead>
+            <tr>
+                <th style="width: 15%">Tanggal</th>
+                <th style="width: 45%">Keterangan</th>
+                <th style="width: 15%">Jenis</th>
+                <th style="width: 25%" class="text-right">Jumlah</th>
+            </tr>
+        </thead>
+        <tbody id="pdf-table-body">
+            <!-- Data akan dimuat melalui JavaScript -->
+        </tbody>
+    </table>
+    
+    <div style="margin-top: 40px; text-align: right; font-size: 14px;">
+        <p>Dilaporkan oleh,</p>
+        <br><br><br>
+        <p><strong>Nara Pustaka</strong></p>
     </div>
 </div>
 
@@ -364,36 +417,121 @@
         });
     }
 
-    // --- FUNGSI GENERATE PDF PREMIUM ---
+    // --- FUNGSI GENERATE PDF FORMAL UNTUK PAJAK ---
     function exportToPDF() {
-        showLoading(true, "Membuat PDF...", "Mengonversi halaman web ke dokumen PDF... Mohon tunggu.");
+        showLoading(true, "Membuat PDF...", "Menyiapkan laporan keuangan formal... Mohon tunggu.");
         
-        // Tambahkan kelas cetak ke body untuk menyembunyikan input form saat export
-        document.body.classList.add('printing-pdf');
+        // Siapkan data ke dalam Template Print
+        document.getElementById('pdf-date').innerText = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
         
-        const element = document.getElementById('mainApp');
+        // Ambil nilai ringkasan saat ini
+        const totalIncome = transactions.filter(t => t.type === 'income').reduce((sum, t) => sum + parseFloat(t.amount), 0);
+        const totalExpense = transactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + parseFloat(t.amount), 0);
+        const netProfit = totalIncome - totalExpense;
+        const tax = totalIncome * 0.005;
+
+        document.getElementById('pdf-income').innerText = formatRupiah(totalIncome);
+        document.getElementById('pdf-expense').innerText = formatRupiah(totalExpense);
+        document.getElementById('pdf-profit').innerText = formatRupiah(netProfit);
+        document.getElementById('pdf-tax').innerText = formatRupiah(tax);
+
+        // Isi Tabel Rincian PDF
+        const pdfTbody = document.getElementById('pdf-table-body');
+        pdfTbody.innerHTML = '';
         
-        // Konfigurasi Kertas A4 & Rasio Kompresi Tinggi
+        let sortedTransactions = [...transactions].sort((a, b) => new Date(a.date) - new Date(b.date)); // Urut dari terlama untuk laporan
+        
+        sortedTransactions.forEach(t => {
+            let dateObj = new Date(t.date);
+            let formattedDate = ("0" + dateObj.getDate()).slice(-2) + "/" + ("0" + (dateObj.getMonth() + 1)).slice(-2) + "/" + dateObj.getFullYear();
+            
+            let row = `<tr>
+                <td>${formattedDate}</td>
+                <td>${t.desc}</td>
+                <td>${t.type === 'income' ? 'Pemasukan' : 'Pengeluaran'}</td>
+                <td class="text-right">${formatRupiah(t.amount)}</td>
+            </tr>`;
+            pdfTbody.insertAdjacentHTML('beforeend', row);
+        });
+
+        const printElement = document.getElementById('print-template');
+        printElement.style.display = 'block'; // Tampilkan template (tersembunyi) sementara untuk html2pdf
+
         const options = {
-            margin:       [10, 10, 10, 10], // Margins (top, left, bottom, right) dalam mm
-            filename:     'Laporan_Keuangan_Nara_Pustaka.pdf',
+            margin:       15,
+            filename:     `Laporan_Keuangan_NaraPustaka_${new Date().toISOString().slice(0,10)}.pdf`,
             image:        { type: 'jpeg', quality: 0.98 },
-            html2canvas:  { scale: 2, useCORS: true, logging: false },
+            html2canvas:  { scale: 2, logging: false },
             jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
         };
 
-        // Jalankan ekspor file PDF di client-side
-        html2pdf().set(options).from(element).save().then(() => {
-            document.body.classList.remove('printing-pdf');
+        html2pdf().set(options).from(printElement).save().then(() => {
+            printElement.style.display = 'none'; // Sembunyikan kembali
             showLoading(false);
         }).catch(err => {
-            console.error("Gagal cetak otomatis via html2pdf, mengalihkan ke printer browser:", err);
-            document.body.classList.remove('printing-pdf');
+            console.error("Gagal cetak otomatis", err);
+            printElement.style.display = 'none';
             showLoading(false);
-            
-            // Fallback cadangan jika pustaka diblokir oleh HP versi sangat lama
-            window.print();
+            alert("Terjadi kesalahan saat membuat PDF.");
         });
+    }
+
+    // --- FUNGSI EXPORT KE EXCEL (.XLSX) ---
+    function exportToExcel() {
+        if(transactions.length === 0) {
+            alert("Tidak ada data untuk diexport!");
+            return;
+        }
+        
+        showLoading(true, "Membuat Excel...", "Menyusun data ke dalam format Spreadsheet...");
+
+        const totalIncome = transactions.filter(t => t.type === 'income').reduce((sum, t) => sum + parseFloat(t.amount), 0);
+        const totalExpense = transactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + parseFloat(t.amount), 0);
+        const netProfit = totalIncome - totalExpense;
+        const tax = totalIncome * 0.005;
+
+        // Susun struktur data Excel
+        let excelData = [
+            ["LAPORAN KEUANGAN NARA PUSTAKA"],
+            ["Tanggal Cetak:", new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })],
+            [],
+            ["RINGKASAN FINANSIAL"],
+            ["Total Pemasukan (Omzet)", totalIncome],
+            ["Total Pengeluaran", totalExpense],
+            ["Laba Bersih", netProfit],
+            ["Estimasi PPh Final UMKM (0.5%)", tax],
+            [],
+            ["RINCIAN TRANSAKSI"],
+            ["Tanggal", "Keterangan", "Jenis", "Jumlah (Rp)"]
+        ];
+
+        let sortedTransactions = [...transactions].sort((a, b) => new Date(a.date) - new Date(b.date));
+        sortedTransactions.forEach(t => {
+            let dateObj = new Date(t.date);
+            let formattedDate = ("0" + dateObj.getDate()).slice(-2) + "/" + ("0" + (dateObj.getMonth() + 1)).slice(-2) + "/" + dateObj.getFullYear();
+            
+            excelData.push([
+                formattedDate, 
+                t.desc, 
+                t.type === 'income' ? 'Pemasukan' : 'Pengeluaran', 
+                parseFloat(t.amount)
+            ]);
+        });
+
+        try {
+            // Buat Workbook dan Worksheet
+            let ws = XLSX.utils.aoa_to_sheet(excelData);
+            let wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Laporan Keuangan");
+            
+            // Unduh file Excel
+            XLSX.writeFile(wb, `Laporan_Keuangan_NaraPustaka_${new Date().toISOString().slice(0,10)}.xlsx`);
+            showLoading(false);
+        } catch(e) {
+            console.error(e);
+            alert("Gagal membuat file Excel.");
+            showLoading(false);
+        }
     }
 
     // --- FUNGSI FORMAT RUPIAH ---
